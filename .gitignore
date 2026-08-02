@@ -1,0 +1,46 @@
+# R
+
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio
+
+.Rproj.user/
+
+# Generated Results
+
+results/
+
+results.rds
+
+# Large Data
+
+GDCdata/
+
+data/raw/
+
+data/processed/
+
+data/validation/TCGA/
+
+data/validation/GEO/
+
+data/validation/GTEx/
+
+Downloaded_Files_List.txt
+
+# Archives
+
+*.zip
+*.tar.gz
+
+# Logs
+
+*.log
+
+# Operating System Files
+
+.DS_Store
+
+Thumbs.db

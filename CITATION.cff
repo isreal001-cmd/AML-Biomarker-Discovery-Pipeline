@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+
+title: "AML Biomarker Discovery Pipeline"
+
+message: "If you use this software, please cite it."
+
+authors:
+  
+  - family-names: "Abiodun"
+
+given-names: "Isreal Oluwafemi"
+
+version: "1.0.0"
+
+date-released: 2026-08-01
+
+license: MIT
+
+repository-code: https://github.com/YOUR_USERNAME/AML_Biomarker_Discovery_Pipeline
