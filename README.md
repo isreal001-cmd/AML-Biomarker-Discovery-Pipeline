@@ -1,295 +1,182 @@
-# AML Biomarker Discovery Pipeline
+# AML Biomarker Discovery Framework
 
-A reproducible RNA sequencing framework for discovering and validating diagnostic biomarkers in **Acute Myeloid Leukemia (AML)** using differential expression analysis, machine learning, pathway enrichment, and external validation.
-
----
-  
-  ## Overview
-  
-  The AML Biomarker Discovery Pipeline is a modular bioinformatics framework developed to perform end to end RNA sequencing analysis from raw featureCounts output to externally validated biomarker candidates.
-
-The framework combines statistical analysis, machine learning, visualization, and external validation into a reproducible workflow designed for research and publication.
+A reproducible RNA-seq analysis framework for identifying diagnostic and prognostic biomarkers in Acute Myeloid Leukemia using differential expression analysis, machine learning, functional enrichment, and external validation.
 
 ---
-  
-  ## Key Features
-  
-  ### RNA Sequencing Analysis
-  
-  * FeatureCounts count matrix merging
-* Sample metadata generation
-* Differential expression analysis using DESeq2
-* Variance Stabilizing Transformation (VST)
 
-### Exploratory Data Analysis
+## Overview
 
-* Principal Component Analysis (PCA)
-* Volcano plot generation
-* Heatmap visualization
-* Batch effect assessment
+The AML Biomarker Discovery Framework is a modular R based pipeline designed to perform end to end transcriptomic analysis from raw featureCounts output to publication ready figures and biomarker validation.
 
-### Biomarker Discovery
-
-* Differential gene prioritization
-* Functional enrichment analysis
-* ROC curve analysis
-* Biomarker expression visualization
-* Random Forest based feature importance
-
-### External Validation
-
-* Validation dataset preparation
-* TCGA RNA sequencing integration
-* Independent biomarker validation
-* Validation visualizations
-
-### Reproducibility
-
-* Automated package checking
-* Global configuration management
-* Session information logging
-* Publication summary generation
-* Modular pipeline execution
-* Validation specific runner
+The framework emphasizes reproducibility, modularity, automation, and publication quality outputs while following best practices for computational biology research.
 
 ---
-  
-  # Pipeline Workflow
-  
-  ```text
-FeatureCounts Output
 
-│
+## Features
 
-▼
+- Automated featureCounts merging
+- Metadata generation and validation
+- Differential expression analysis using DESeq2
+- Variance Stabilizing Transformation
+- Principal Component Analysis
+- Volcano plot generation
+- Heatmap visualization
+- Batch effect assessment
+- Biomarker candidate selection
+- Functional enrichment analysis
+- ROC curve analysis
+- Random Forest validation
+- External validation using TCGA
+- Publication ready figures
+- Automated analysis reports
 
-Merge Count Matrix
+---
 
-│
+## Pipeline Workflow
 
-▼
-
-Prepare Metadata
-
-│
-
-▼
-
-Differential Expression Analysis
-
-│
-
-▼
-
+```text
+featureCounts
+      │
+      ▼
+Metadata Preparation
+      │
+      ▼
+DESeq2 Differential Expression
+      │
+      ▼
 Variance Stabilizing Transformation
-
-│
-
-▼
-
-Quality Assessment
-
-│
-
-▼
-
-Biomarker Discovery
-
-│
-
-▼
-
+      │
+      ▼
+PCA
+Volcano Plot
+Heatmap
+      │
+      ▼
+Batch Assessment
+      │
+      ▼
+Biomarker Selection
+      │
+      ▼
 Functional Enrichment
-
-│
-
-▼
-
-Machine Learning Validation
-
-│
-
-▼
-
-External Validation (TCGA)
-
-│
-
-▼
-
-Publication Ready Outputs
+      │
+      ▼
+ROC Analysis
+      │
+      ▼
+Random Forest Validation
+      │
+      ▼
+External Validation
+      │
+      ▼
+Publication Figures
+      │
+      ▼
+Publication Report
 ```
 
 ---
-  
-  # Repository Structure
-  
-  ```text
+
+## Project Structure
+
+```text
 AML_Project/
-  
-  ├── data/
-  │
-├── results/
-  │
-├── scripts/
-  │
+
 ├── config.R
-│
-├── plotting_functions.R
-│
-├── validation_functions.R
-│
 ├── run_pipeline.R
-│
 ├── run_validation.R
-│
-└── README.md
+├── scripts/
+├── functions/
+├── data/
+├── results/
+├── README.md
+├── LICENSE
+├── CHANGELOG.md
+├── CITATION.cff
 ```
 
 ---
-  
-  # Pipeline Modules
-  
-  | Step | Module                                |
-  | ---- | ------------------------------------- |
-  | 00   | Package Installation and Verification |
-  | 01   | Merge featureCounts Output            |
-  | 02   | Metadata Preparation                  |
-  | 03   | Differential Expression Analysis      |
-  | 04   | VST Normalization                     |
-  | 05   | Principal Component Analysis          |
-  | 06   | Volcano Plot                          |
-  | 07   | Heatmap                               |
-  | 08   | Batch Assessment                      |
-  | 09   | Biomarker Candidate Selection         |
-  | 10   | Functional Enrichment                 |
-  | 11   | ROC Analysis                          |
-  | 12   | Biomarker Expression                  |
-  | 13   | Random Forest Validation              |
-  | 14A  | Validation Dataset Preparation        |
-  | 14B  | TCGA Data Processing                  |
-  | 15   | External Validation                   |
-  | 16   | Validation Visualization              |
-  | 17   | Session Information                   |
-  | 18   | Publication Summary                   |
-  
-  ---
-  
-  # Installation
-  
-  Clone the repository
+
+## Installation
+
+Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/AML_Biomarker_Discovery_Pipeline.git
+git clone https://github.com/isreal001-cmd/AML-Biomarker-Discovery-Pipeline.git
 ```
 
 Open the project in RStudio.
 
----
-  
-  # Running the Complete Pipeline
-  
-  ```r
+Run the complete analysis
+
+```r
 source("run_pipeline.R")
 ```
 
-This executes every analysis module from preprocessing through external validation.
+Run only the validation pipeline
 
----
-  
-  # Running Only External Validation
-  
-  ```r
+```r
 source("run_validation.R")
 ```
 
-This executes only the validation workflow.
+---
+
+## Outputs
+
+The framework automatically generates
+
+- Differential expression tables
+- PCA plots
+- Volcano plots
+- Heatmaps
+- Functional enrichment results
+- ROC curves
+- Biomarker validation results
+- Publication ready figures
+- Pipeline logs
+- Session information
 
 ---
-  
-  # Pipeline Output
-  
-  The framework automatically generates
 
-* Differential expression results
-* Normalized expression matrices
-* PCA figures
-* Volcano plots
-* Heatmaps
-* Functional enrichment analysis
-* ROC analysis
-* Random Forest results
-* External validation outputs
-* Publication summary
-* Session information
-* Pipeline logs
+## Reproducibility
+
+The framework records
+
+- Pipeline version
+- R version
+- Package versions
+- Session information
+- Processing logs
+
+to ensure complete reproducibility.
 
 ---
-  
-  # Reproducibility
-  
-  To ensure reproducible research, every execution records
 
-* R session information
-* Installed package versions
-* Pipeline version
-* Execution logs
+## Citation
+
+If you use this framework in your research, please cite the accompanying manuscript after publication.
+
+Citation information will be updated upon publication.
 
 ---
-  
-  # Current Version
-  
-  **Version:** 1.0.0
 
-Current release includes
+## License
 
-* Complete RNA sequencing workflow
-* Automated pipeline execution
-* External TCGA validation
-* Publication summary generation
-* Reproducible project configuration
+This project is distributed under the MIT License.
 
 ---
-  
-  # Future Development
-  
-  Planned improvements include
 
-* GEO validation module
-* GTEx validation
-* User supplied dataset validation
-* Interactive HTML reports
-* Shiny dashboard
-* Multi cohort consensus biomarker analysis
+## Author
+
+**Isreal Oluwafemi Abiodun**
+
+Bioinformatician | Computational Biology | Cancer Genomics | RNA-seq Analysis
 
 ---
-  
-  # Citation
-  
-  A formal software citation will be provided through the repository using a `CITATION.cff` file.
 
----
-  
-  # License
-  
-  This project will be distributed under the MIT License.
+## Version
 
----
-  
-  # Author
-  
-  **Isreal Oluwafemi Abiodun**
-  
-  Bioinformatician
+Current Release
 
-Computational Biology
-
-Cancer Genomics
-
-RNA Sequencing Analysis
-
-Machine Learning
-
----
-  
-  If you use this framework in your research, please consider citing the repository once the official release becomes available.
+**Version 1.0.0**
