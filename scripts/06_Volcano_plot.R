@@ -1,86 +1,127 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Script: 06_Volcano_plot.R
-###############################################################
+#
+# Script:
+# 06_Volcano_plot.R
+#
+# Purpose:
+# Generate publication quality volcano plot showing
+# differentially expressed genes.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-##############################
-# 1. Clear Environment
-##############################
-
-# rm(list = ls())
-
-##############################
-# 2. Load Configuration
-##############################
+##############################################################
+# Load Configuration
+##############################################################
 
 source("config.R")
 source("functions/plotting_functions.R")
 
-##############################
-# 3. Load Packages
-##############################
+cat("\n")
+cat("=========================================\n")
+cat("Stage 6 : Volcano Plot\n")
+cat("=========================================\n\n")
 
-packages <- c(
-  "ggplot2",
-  "ggrepel",
-  "readr",
-  "dplyr"
+start_time <- Sys.time()
+
+##############################################################
+# Output Directory
+##############################################################
+
+dir.create(
+  VOLCANO_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
 )
 
-for(pkg in packages){
+##############################################################
+# Input File
+##############################################################
+
+RESULT_FILE <- file.path(
+  RESULTS_DIR,
+  "deseq2",
+  "DESeq2_all_results.csv"
+)
+
+##############################################################
+# Output Files
+##############################################################
+
+PNG_FILE <- file.path(
+  VOLCANO_DIR,
+  "Volcano_plot.png"
+)
+
+PDF_FILE <- file.path(
+  VOLCANO_DIR,
+  "Volcano_plot.pdf"
+)
+
+##############################################################
+# Validate Input
+##############################################################
+
+if (!file.exists(RESULT_FILE)) {
   
-  if(!require(pkg, character.only = TRUE)){
-    
-    install.packages(pkg)
-    
-    library(pkg, character.only = TRUE)
-    
-  }
+  stop(
+    "DESeq2 results not found.\nRun 03_DESeq2_analysis.R first."
+  )
   
 }
 
-###############################################################
-# 4. Load Results
-###############################################################
+##############################################################
+# Load Results
+##############################################################
 
-results <- read_csv(
-  "results/deseq2/DESeq2_all_results.csv",
+cat("Loading DESeq2 results...\n")
+
+results <- readr::read_csv(
+  RESULT_FILE,
   show_col_types = FALSE
 )
 
-cat("---------------------------------------\n")
-cat("DESeq2 Results Loaded\n")
-cat("---------------------------------------\n")
+cat("Genes Loaded :", nrow(results), "\n\n")
 
-cat("Genes:", nrow(results), "\n")
+##############################################################
+# Prepare Volcano Data
+##############################################################
 
-###############################################################
-# 5. Prepare Volcano Data
-###############################################################
+results <- dplyr::filter(
+  results,
+  !is.na(padj)
+)
 
-results <- results %>%
+results$Significance <- dplyr::case_when(
   
-  filter(!is.na(padj))
+  results$padj < PADJ_THRESHOLD &
+    results$log2FoldChange >= LOG2FC_THRESHOLD ~
+    
+    "Up",
+  
+  results$padj < PADJ_THRESHOLD &
+    results$log2FoldChange <= -LOG2FC_THRESHOLD ~
+    
+    "Down",
+  
+  TRUE ~
+    
+    "Not Significant"
+  
+)
 
-results$Significance <- "Not Significant"
+results$minusLog10Padj <-
+  
+  -log10(results$padj)
 
-results$Significance[
-  results$padj < 0.05 &
-    results$log2FoldChange >= 1
-] <- "Up"
-
-results$Significance[
-  results$padj < 0.05 &
-    results$log2FoldChange <= -1
-] <- "Down"
-
-results$minusLog10Padj <- -log10(results$padj)
-
-table(results$Significance)
-
-###############################################################
-# 6. Label Biomarkers
-###############################################################
+##############################################################
+# Candidate Biomarkers
+##############################################################
 
 genes_to_label <- c(
   
@@ -92,23 +133,27 @@ genes_to_label <- c(
   
 )
 
-label_data <- results %>%
-  
-  filter(GeneID %in% genes_to_label)
-
-###############################################################
-# 7. Volcano Plot
-###############################################################
-
-p <- ggplot(
+label_data <- dplyr::filter(
   
   results,
   
-  aes(
+  GeneID %in% genes_to_label
+  
+)
+
+##############################################################
+# Volcano Plot
+##############################################################
+
+p <- ggplot2::ggplot(
+  
+  results,
+  
+  ggplot2::aes(
     
-    x = log2FoldChange,
+    log2FoldChange,
     
-    y = minusLog10Padj,
+    minusLog10Padj,
     
     colour = Significance
     
@@ -116,49 +161,47 @@ p <- ggplot(
   
 ) +
   
-  geom_point(
+  ggplot2::geom_point(
     
-    alpha = 0.7,
+    alpha = 0.70,
     
     size = 2
     
   ) +
   
-  scale_colour_manual(
+  ggplot2::geom_vline(
     
-    values = c(
+    xintercept = c(
       
-      "Up" = AML_RED,
+      -LOG2FC_THRESHOLD,
       
-      "Down" = HEALTHY_BLUE,
+      LOG2FC_THRESHOLD
       
-      "Not Significant" = GREY
-      
-    )
-    
-  ) +
-  
-  geom_vline(
-    
-    xintercept = c(-1,1),
+    ),
     
     linetype = 2
     
   ) +
   
-  geom_hline(
+  ggplot2::geom_hline(
     
-    yintercept = -log10(0.05),
+    yintercept =
+      
+      -log10(PADJ_THRESHOLD),
     
     linetype = 2
     
   ) +
   
-  geom_text_repel(
+  ggrepel::geom_text_repel(
     
     data = label_data,
     
-    aes(label = GeneID),
+    ggplot2::aes(
+      
+      label = GeneID
+      
+    ),
     
     size = 4,
     
@@ -166,29 +209,51 @@ p <- ggplot(
     
   ) +
   
-  ggtitle("Differential Gene Expression in AML") +
+  ggplot2::scale_colour_manual(
+    
+    values = c(
+      
+      Up = AML_RED,
+      
+      Down = HEALTHY_BLUE,
+      
+      "Not Significant" = GREY
+      
+    )
+    
+  ) +
   
-  xlab("Log2 Fold Change") +
-  
-  ylab("-Log10 Adjusted P-value") +
+  ggplot2::labs(
+    
+    title =
+      
+      "Differential Gene Expression",
+    
+    subtitle =
+      
+      "AML versus Healthy",
+    
+    x =
+      
+      "Log2 Fold Change",
+    
+    y =
+      
+      expression(-log[10]("Adjusted P value"))
+    
+  ) +
   
   publication_theme()
 
-###############################################################
-# 8. Save Figure
-###############################################################
+##############################################################
+# Export Figures
+##############################################################
 
-ggsave(
+ggplot2::ggsave(
   
-  filename = file.path(
-    
-    VOLCANO_DIR,
-    
-    "Volcano_plot.png"
-    
-  ),
+  PNG_FILE,
   
-  plot = p,
+  p,
   
   width = FIG_WIDTH,
   
@@ -198,17 +263,11 @@ ggsave(
   
 )
 
-ggsave(
+ggplot2::ggsave(
   
-  filename = file.path(
-    
-    VOLCANO_DIR,
-    
-    "Volcano_plot.pdf"
-    
-  ),
+  PDF_FILE,
   
-  plot = p,
+  p,
   
   width = FIG_WIDTH,
   
@@ -216,8 +275,30 @@ ggsave(
   
 )
 
-cat("\n---------------------------------------\n")
+##############################################################
+# Summary
+##############################################################
 
-cat("Volcano Plot Completed Successfully\n")
+end_time <- Sys.time()
 
-cat("---------------------------------------\n")
+cat("\n")
+cat("=========================================\n")
+cat("Stage 6 Completed Successfully\n")
+cat("=========================================\n\n")
+
+print(table(results$Significance))
+
+cat("\n")
+
+cat("PNG Figure :", PNG_FILE, "\n")
+
+cat("PDF Figure :", PDF_FILE, "\n\n")
+
+cat(
+  
+  "Time Elapsed :",
+  
+  round(end_time - start_time, 2),
+  
+  "\n\n"
+)

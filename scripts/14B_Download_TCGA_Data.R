@@ -1,34 +1,32 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Script: 14B_Download_TCGA_Data.R
+#
+# Script:
+# 14B_Download_TCGA_Data.R
 #
 # Purpose:
 # Convert downloaded TCGA-LAML STAR count files into a
 # standardized validation dataset.
-#
-# Input:
-# GDCdata/TCGA-LAML/Transcriptome_Profiling/
-# Gene_Expression_Quantification/
-#
-# Output:
-# data/validation/TCGA/
-# ├── expression.csv
-# └── metadata.csv
-###############################################################
+##############################################################
 
-# rm(list = ls())
-
-###############################################################
+##############################################################
 # Load Configuration
-###############################################################
+##############################################################
 
 source("config.R")
 
-###############################################################
-# Required Packages
-###############################################################
+cat("\n")
+cat("=========================================\n")
+cat("Stage 14B : TCGA Validation Dataset Preparation\n")
+cat("=========================================\n\n")
 
-packages <- c(
+start_time <- Sys.time()
+
+##############################################################
+# Required Packages
+##############################################################
+
+required_packages <- c(
   "readr",
   "dplyr",
   "stringr",
@@ -36,133 +34,223 @@ packages <- c(
   "tibble"
 )
 
-for(pkg in packages){
-  
-  if(!require(pkg, character.only = TRUE)){
-    
-    install.packages(pkg)
-    
-    library(pkg, character.only = TRUE)
-    
-  }
-  
-}
+install_and_load_packages(required_packages)
 
-###############################################################
-# Input Folder
-###############################################################
+##############################################################
+# Define Directories
+##############################################################
 
-input_dir <-
-  "GDCdata/TCGA-LAML/Transcriptome_Profiling/Gene_Expression_Quantification"
+INPUT_DIR <- file.path(
+  "GDCdata",
+  "TCGA-LAML",
+  "Transcriptome_Profiling",
+  "Gene_Expression_Quantification"
+)
 
-###############################################################
+OUTPUT_DIR <- file.path(
+  "data",
+  "validation",
+  "TCGA"
+)
+
+dir.create(
+  OUTPUT_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+##############################################################
 # Locate STAR Count Files
-###############################################################
+##############################################################
 
 count_files <- list.files(
-  
-  input_dir,
-  
+  path = INPUT_DIR,
   pattern = "augmented_star_gene_counts.tsv$",
-  
   recursive = TRUE,
-  
   full.names = TRUE
-  
 )
 
-cat("---------------------------------------\n")
-cat("TCGA STAR Files Located\n")
-cat("---------------------------------------\n")
-cat("Files:", length(count_files), "\n\n")
+cat("Searching for TCGA STAR Count Files...\n\n")
+cat("Files Found :", length(count_files), "\n\n")
 
 if(length(count_files) == 0){
+  stop("No TCGA STAR count files were found.")
+}
+
+##############################################################
+# Read First File
+##############################################################
+
+first <- readr::read_tsv(
+  count_files[1],
+  comment = "#",
+  show_col_types = FALSE
+)
+
+cat("Detected columns:\n")
+print(names(first))
+cat("\n")
+
+required_columns <- c(
+  "gene_id",
+  "unstranded"
+)
+
+missing_columns <- setdiff(
+  required_columns,
+  names(first)
+)
+
+if(length(missing_columns) > 0){
   
-  stop("No STAR count files found.")
+  stop(
+    paste(
+      "Missing required columns:",
+      paste(missing_columns, collapse = ", ")
+    )
+  )
   
 }
 
-###############################################################
-# Read First File
-###############################################################
-
-first <- read_tsv(
-  
-  count_files[1],
-  
-  comment = "#",
-  
-  show_col_types = FALSE
-  
-)
-
-###############################################################
-# Keep Genes Only
-###############################################################
+##############################################################
+# Keep Gene Rows Only
+##############################################################
 
 first <- first %>%
-  
-  filter(str_detect(gene_id, "^ENSG"))
+  dplyr::filter(
+    stringr::str_detect(
+      gene_id,
+      "^ENSG"
+    )
+  )
 
-###############################################################
-# Initialize Expression Matrix
-###############################################################
+##############################################################
+# Initialise Objects
+##############################################################
 
-expression <- tibble(
-  
+expression <- tibble::tibble(
   GeneID = first$gene_id
-  
 )
 
-###############################################################
-# Initialize Metadata
-###############################################################
-
-metadata <- tibble(
-  
+metadata <- tibble::tibble(
   SampleID = character(),
-  
   File = character()
-  
 )
 
-###############################################################
+##############################################################
 # Read All Samples
-###############################################################
+##############################################################
 
-cat("Reading expression files...\n\n")
+cat("Reading Expression Files...\n\n")
 
 for(i in seq_along(count_files)){
   
   file <- count_files[i]
   
-  sample <- basename(dirname(file))
+  sample_id <- basename(dirname(file))
   
-  cat(i, "/", length(count_files), ":", sample, "\n")
+  cat(
+    "[",
+    i,
+    "/",
+    length(count_files),
+    "] ",
+    sample_id,
+    "\n",
+    sep = ""
+  )
   
-  dat <- read_tsv(
-    
+  dat <- readr::read_tsv(
     file,
-    
     comment = "#",
-    
     show_col_types = FALSE
+  )
+  
+  ##########################################################
+  # Validate Columns
+  ##########################################################
+  
+  if(!all(required_columns %in% names(dat))){
+    
+    stop(
+      paste(
+        "Required columns missing in:",
+        sample_id
+      )
+    )
+    
+  }
+  
+  ##########################################################
+  # Keep Genes Only
+  ##########################################################
+  
+  dat <- dat %>%
+    dplyr::filter(
+      stringr::str_detect(
+        gene_id,
+        "^ENSG"
+      )
+    )
+  
+  ##########################################################
+  # Validate Gene Count
+  ##########################################################
+  
+  if(nrow(dat) != nrow(expression)){
+    
+    stop(
+      paste(
+        "Gene count mismatch detected in:",
+        sample_id
+      )
+    )
+    
+  }
+  
+  ##########################################################
+  # Validate Gene Order
+  ##########################################################
+  
+  if(!identical(
+    expression$GeneID,
+    dat$gene_id
+  )){
+    
+    stop(
+      paste(
+        "Gene order mismatch detected in:",
+        sample_id
+      )
+    )
+    
+  }
+  
+  ##########################################################
+  # Append Counts
+  ##########################################################
+  
+  expression <- dplyr::bind_cols(
+    
+    expression,
+    
+    tibble::tibble(
+      !!sample_id := dat$unstranded
+    )
     
   )
   
-  dat <- dat %>%
-    
-    filter(str_detect(gene_id, "^ENSG"))
+  ##########################################################
+  # Metadata
+  ##########################################################
   
-  expression[[sample]] <- dat$unstranded
-  
-  metadata <- bind_rows(
+  metadata <- dplyr::bind_rows(
     
     metadata,
     
-    tibble(
+    tibble::tibble(
       
-      SampleID = sample,
+      SampleID = sample_id,
       
       File = basename(file)
       
@@ -172,47 +260,66 @@ for(i in seq_along(count_files)){
   
 }
 
-###############################################################
+##############################################################
+# Remove Duplicate GeneID Column
+##############################################################
+
+expression <- expression %>%
+  dplyr::select(
+    !matches("^GeneID\\.\\.\\.")
+  )
+
+##############################################################
 # Save Files
-###############################################################
+##############################################################
 
-dir.create(
-  
-  "data/validation/TCGA",
-  
-  recursive = TRUE,
-  
-  showWarnings = FALSE
-  
+expression_file <- file.path(
+  OUTPUT_DIR,
+  "expression.csv"
 )
 
-write_csv(
-  
+metadata_file <- file.path(
+  OUTPUT_DIR,
+  "metadata.csv"
+)
+
+readr::write_csv(
   expression,
-  
-  "data/validation/TCGA/expression.csv"
-  
+  expression_file
 )
 
-write_csv(
-  
+readr::write_csv(
   metadata,
-  
-  "data/validation/TCGA/metadata.csv"
-  
+  metadata_file
 )
 
-###############################################################
+##############################################################
 # Summary
-###############################################################
+##############################################################
 
-cat("\n---------------------------------------\n")
+cat("\n")
+cat("---------------------------------------\n")
 cat("TCGA Dataset Prepared Successfully\n")
 cat("---------------------------------------\n\n")
 
 cat("Genes   :", nrow(expression), "\n")
 cat("Samples :", ncol(expression) - 1, "\n\n")
 
-cat("Files created:\n")
-cat("data/validation/TCGA/expression.csv\n")
-cat("data/validation/TCGA/metadata.csv\n")
+cat("Expression Matrix :", expression_file, "\n")
+cat("Metadata          :", metadata_file, "\n\n")
+
+##############################################################
+# Completion
+##############################################################
+
+end_time <- Sys.time()
+
+cat("=========================================\n")
+cat("Stage 14B Completed Successfully\n")
+cat("=========================================\n\n")
+
+cat(
+  "Time Elapsed :",
+  round(as.numeric(difftime(end_time, start_time, units = "secs")), 2),
+  "seconds\n\n"
+)

@@ -1,6 +1,6 @@
 ##############################################################
 # AML Biomarker Discovery Pipeline
-# Publication Summary Export
+# Script: 18_Publication_Summary.R
 #
 # Author  : Isreal Oluwafemi Abiodun
 # Version : 1.0.0
@@ -13,10 +13,13 @@ cat("Generating Publication Summary\n")
 cat("---------------------------------------\n")
 
 ##############################################################
-# Create publication directory
+# Create Publication Directory
 ##############################################################
 
-PUBLICATION_DIR <- file.path(RESULTS_DIR, "publication")
+PUBLICATION_DIR <- file.path(
+  RESULTS_DIR,
+  "publication"
+)
 
 dir.create(
   PUBLICATION_DIR,
@@ -32,7 +35,7 @@ summary_text <- c(
   
   "AML Biomarker Discovery Pipeline",
   
-  "----------------------------------------",
+  "========================================",
   
   paste("Pipeline :", PIPELINE_NAME),
   
@@ -44,70 +47,67 @@ summary_text <- c(
   
   "",
   
-  "Analysis Completed Successfully.",
+  "Pipeline Modules",
   
-  "",
+  "----------------",
   
-  "Pipeline Modules:",
+  "01. Merge FeatureCounts",
   
-  "1. FeatureCounts Merge",
+  "02. Prepare Metadata",
   
-  "2. Metadata Preparation",
+  "03. Differential Expression Analysis",
   
-  "3. Differential Expression Analysis",
+  "04. Variance Stabilizing Transformation",
   
-  "4. VST Normalization",
+  "05. PCA Analysis",
   
-  "5. PCA",
+  "06. Volcano Plot",
   
-  "6. Volcano Plot",
+  "07. Heatmap",
   
-  "7. Heatmap",
+  "08. Batch Assessment",
   
-  "8. Batch Assessment",
-  
-  "9. Biomarker Ranking",
+  "09. Biomarker Candidate Selection",
   
   "10. Functional Enrichment",
   
   "11. ROC Analysis",
   
-  "12. Biomarker Expression",
+  "12. Biomarker Expression Plots",
   
   "13. Random Forest Validation",
   
-  "14. Validation Dataset Preparation",
+  "14A. Validation Dataset Assessment",
   
-  "15. TCGA Data Processing",
+  "14B. TCGA Dataset Preparation",
   
-  "16. External Validation",
+  "15. External Validation",
   
-  "17. Validation Visualization",
+  "16. Validation Visualisation",
   
-  "18. Session Information",
+  "17. Save Session Information",
+  
+  "18. Publication Summary",
   
   "",
   
-  "Framework completed successfully."
+  "Pipeline completed successfully."
   
 )
 
 writeLines(
-  
   summary_text,
-  
   file.path(
     PUBLICATION_DIR,
-    "Results_Summary.txt"
+    "Pipeline_Summary.txt"
   )
-  
 )
 
 ##############################################################
 # Figure Index
 ##############################################################
 
-figures <- list.files(
+figure_files <- list.files(
   
   FIGURE_DIR,
   
@@ -117,13 +117,13 @@ figures <- list.files(
   
 )
 
-if(length(figures) > 0){
+if(length(figure_files) > 0){
   
-  figure_table <- data.frame(
+  figure_index <- data.frame(
     
-    Figure = basename(figures),
+    Figure = basename(figure_files),
     
-    Folder = dirname(figures),
+    Folder = dirname(figure_files),
     
     stringsAsFactors = FALSE
     
@@ -131,7 +131,7 @@ if(length(figures) > 0){
   
   write.csv(
     
-    figure_table,
+    figure_index,
     
     file.path(
       PUBLICATION_DIR,
@@ -145,18 +145,26 @@ if(length(figures) > 0){
 }
 
 ##############################################################
-# Export Important Result Tables
+# Important Results Manifest
 ##############################################################
 
 important_files <- c(
   
-  "results/DEGs/Significant_DEGs.csv",
+  "results/deseq2/DESeq2_all_results.csv",
   
-  "results/biomarkers/Top_Biomarkers.csv",
+  "results/deseq2/DESeq2_significant_results.csv",
   
-  "results/ROC/ROC_Results.csv",
+  "results/biomarkers/Ranked_Biomarkers.csv",
   
-  "results/random_forest/Feature_Importance.csv"
+  "results/biomarkers/Top50_Biomarkers.csv",
+  
+  "results/biomarkers/Top20_Biomarkers.csv",
+  
+  "results/roc/ROC_AUC_Table.csv",
+  
+  "results/random_forest/Variable_Importance.csv",
+  
+  "results/validation/Validation_Summary.csv"
   
 )
 
@@ -164,7 +172,9 @@ manifest <- data.frame(
   
   File = important_files,
   
-  Exists = file.exists(important_files)
+  Exists = file.exists(important_files),
+  
+  stringsAsFactors = FALSE
   
 )
 
@@ -181,4 +191,68 @@ write.csv(
   
 )
 
-cat("Publication summary created.\n")
+##############################################################
+# Pipeline Statistics
+##############################################################
+
+pipeline_stats <- data.frame(
+  
+  Metric = c(
+    
+    "Pipeline Version",
+    
+    "Author",
+    
+    "Analysis Date",
+    
+    "Total Figures",
+    
+    "Total Key Result Files"
+    
+  ),
+  
+  Value = c(
+    
+    PIPELINE_VERSION,
+    
+    AUTHOR,
+    
+    as.character(Sys.Date()),
+    
+    length(figure_files),
+    
+    sum(manifest$Exists)
+    
+  ),
+  
+  stringsAsFactors = FALSE
+  
+)
+
+write.csv(
+  
+  pipeline_stats,
+  
+  file.path(
+    PUBLICATION_DIR,
+    "Pipeline_Statistics.csv"
+  ),
+  
+  row.names = FALSE
+  
+)
+
+##############################################################
+# Console Output
+##############################################################
+
+cat("---------------------------------------\n")
+cat("Publication Summary Generated\n")
+cat("---------------------------------------\n\n")
+
+cat("Files created:\n")
+
+cat("results/publication/Pipeline_Summary.txt\n")
+cat("results/publication/Figure_Index.csv\n")
+cat("results/publication/Results_Manifest.csv\n")
+cat("results/publication/Pipeline_Statistics.csv\n")

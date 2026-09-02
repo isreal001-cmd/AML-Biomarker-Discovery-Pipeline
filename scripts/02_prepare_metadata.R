@@ -1,62 +1,86 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Stage 2: Prepare Sample Metadata
 #
-# Author: Isreal Oluwafemi Abiodun
+# Script:
+# 02_prepare_metadata.R
 #
-# Description:
-# Creates the metadata table required for DESeq2 from the
-# merged featureCounts matrix.
-###############################################################
+# Purpose:
+# Generate sample metadata required for DESeq2 analysis
+# from the merged featureCounts count matrix.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-#--------------------------------------------------------------
-# 1. Clear Workspace
-#--------------------------------------------------------------
+##############################################################
+# Load Global Configuration
+##############################################################
 
-# rm(list = ls())
+source("config.R")
 
-#--------------------------------------------------------------
-# 2. Load Packages
-#--------------------------------------------------------------
+cat("\n")
+cat("=========================================\n")
+cat("Stage 2 : Prepare Sample Metadata\n")
+cat("=========================================\n\n")
 
-packages <- c("readr", "dplyr", "stringr")
+start_time <- Sys.time()
 
-for(pkg in packages){
+##############################################################
+# Define Input and Output Files
+##############################################################
+
+INPUT_FILE <- file.path(
+  DATA_DIR,
+  "processed",
+  "merged_counts.csv"
+)
+
+METADATA_DIR <- file.path(
+  DATA_DIR,
+  "metadata"
+)
+
+OUTPUT_FILE <- file.path(
+  METADATA_DIR,
+  "sample_metadata.csv"
+)
+
+dir.create(
+  METADATA_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+##############################################################
+# Validate Input
+##############################################################
+
+if (!file.exists(INPUT_FILE)) {
   
-  if(!require(pkg, character.only = TRUE)){
-    
-    install.packages(pkg)
-    
-    library(pkg, character.only = TRUE)
-    
-  }
+  stop(
+    "Merged count matrix not found.\nRun 01_merge_featureCounts.R first."
+  )
   
 }
 
-#--------------------------------------------------------------
-# 3. Define Directories
-#--------------------------------------------------------------
+##############################################################
+# Read Count Matrix
+##############################################################
 
-input_file <- "data/processed/merged_counts.csv"
-
-metadata_dir <- "data/metadata"
-
-dir.create(metadata_dir,
-           recursive = TRUE,
-           showWarnings = FALSE)
-
-#--------------------------------------------------------------
-# 4. Read Count Matrix
-#--------------------------------------------------------------
-
-counts <- read_csv(
-  input_file,
+counts <- readr::read_csv(
+  
+  INPUT_FILE,
+  
   show_col_types = FALSE
+  
 )
 
-#--------------------------------------------------------------
-# 5. Extract Sample Names
-#--------------------------------------------------------------
+##############################################################
+# Extract Sample Names
+##############################################################
 
 sample_names <- colnames(counts)[-1]
 
@@ -68,13 +92,16 @@ metadata <- data.frame(
   
 )
 
-#--------------------------------------------------------------
-# 6. Assign Biological Condition
-#--------------------------------------------------------------
+##############################################################
+# Assign Biological Condition
+##############################################################
 
 metadata$Condition <- ifelse(
   
-  str_detect(metadata$Sample, "^AML"),
+  stringr::str_detect(
+    metadata$Sample,
+    "^AML"
+  ),
   
   "AML",
   
@@ -82,9 +109,9 @@ metadata$Condition <- ifelse(
   
 )
 
-#--------------------------------------------------------------
-# 7. Assign Sequencing Platform
-#--------------------------------------------------------------
+##############################################################
+# Assign Sequencing Platform
+##############################################################
 
 metadata$Platform <- ifelse(
   
@@ -96,15 +123,18 @@ metadata$Platform <- ifelse(
   
 )
 
-#--------------------------------------------------------------
-# 8. Convert to Factors
-#--------------------------------------------------------------
+##############################################################
+# Convert Variables to Factors
+##############################################################
 
 metadata$Condition <- factor(
   
   metadata$Condition,
   
-  levels = c("Healthy","AML")
+  levels = c(
+    "Healthy",
+    "AML"
+  )
   
 )
 
@@ -114,56 +144,70 @@ metadata$Platform <- factor(
   
 )
 
-#--------------------------------------------------------------
-# 9. Quality Checks
-#--------------------------------------------------------------
+##############################################################
+# Quality Control
+##############################################################
 
-cat("---------------------------------------\n")
-
-cat("Metadata Summary\n")
-
-cat("---------------------------------------\n\n")
-
-cat("Total Samples :", nrow(metadata), "\n\n")
-
-cat("Condition Counts\n")
-
-print(table(metadata$Condition))
-
-cat("\nPlatform Counts\n")
-
-print(table(metadata$Platform))
-
-cat("\nDuplicate Samples : ")
-
-print(sum(duplicated(metadata$Sample)))
-
-#--------------------------------------------------------------
-# 10. Save Metadata
-#--------------------------------------------------------------
-
-write_csv(
+duplicate_samples <- sum(
   
-  metadata,
-  
-  file.path(
-    
-    metadata_dir,
-    
-    "sample_metadata.csv"
-    
-  )
+  duplicated(metadata$Sample)
   
 )
 
+cat("Metadata Summary\n")
+cat("-----------------------------------------\n\n")
+
+cat("Total Samples      :", nrow(metadata), "\n")
+
+cat("Duplicate Samples  :", duplicate_samples, "\n\n")
+
+cat("Condition Counts\n")
+print(table(metadata$Condition))
+
+cat("\nPlatform Counts\n")
+print(table(metadata$Platform))
+
+##############################################################
+# Save Metadata
+##############################################################
+
+readr::write_csv(
+  
+  metadata,
+  
+  OUTPUT_FILE
+  
+)
+
+##############################################################
+# Summary
+##############################################################
+
+end_time <- Sys.time()
+
 cat("\n")
+cat("=========================================\n")
+cat("Stage 2 Completed Successfully\n")
+cat("=========================================\n\n")
 
-cat("---------------------------------------\n")
+cat("Metadata File     :", OUTPUT_FILE, "\n")
 
-cat("Metadata Successfully Generated\n")
+cat("Samples           :", nrow(metadata), "\n")
 
-cat("---------------------------------------\n")
+cat("Healthy Samples   :",
+    
+    sum(metadata$Condition == "Healthy"),
+    
+    "\n")
 
-cat("\nSaved to:\n")
+cat("AML Samples       :",
+    
+    sum(metadata$Condition == "AML"),
+    
+    "\n")
 
-cat("data/metadata/sample_metadata.csv\n")
+cat("Time Elapsed      :",
+    
+    round(end_time - start_time, 2),
+    
+    "\n\n")

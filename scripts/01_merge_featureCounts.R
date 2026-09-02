@@ -1,224 +1,249 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Stage 1: Merge Galaxy featureCounts Outputs
 #
-# Author: Isreal Oluwafemi Abiodun
-# Description:
-#   Merges all Galaxy featureCounts (.tabular) files into a
-#   single count matrix suitable for DESeq2.
-###############################################################
+# Script:
+# 01_merge_featureCounts.R
+#
+# Purpose:
+# Merge Galaxy featureCounts output files into a single
+# count matrix for downstream differential expression analysis.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-# rm(list = ls())
+##############################################################
+# Load Global Configuration
+##############################################################
 
-##############################
-# Load Required Packages
-##############################
+source("config.R")
 
-packages <- c("readr", "dplyr", "purrr")
+cat("\n")
+cat("=========================================\n")
+cat("Stage 1 : Merge featureCounts Files\n")
+cat("=========================================\n\n")
 
-for(pkg in packages){
-  
-  if(!require(pkg, character.only = TRUE)){
-    install.packages(pkg)
-    library(pkg, character.only = TRUE)
-  }
-  
-}
+start_time <- Sys.time()
 
-##############################
-# Define Project Directories
-##############################
+##############################################################
+# Input Directories
+##############################################################
 
-count_dir <- "data/counts"
+COUNT_DIR <- file.path(DATA_DIR, "Counts")
 
-output_dir <- "data/processed"
+PROCESSED_DIR <- file.path(DATA_DIR, "processed")
 
-log_dir <- "results/logs"
+dir.create(
+  PROCESSED_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
-dir.create(output_dir,
-           recursive = TRUE,
-           showWarnings = FALSE)
-
-dir.create(log_dir,
-           recursive = TRUE,
-           showWarnings = FALSE)
-
-##############################
+##############################################################
 # Locate Count Files
-##############################
+##############################################################
 
 count_files <- list.files(
-  path = count_dir,
+  
+  path = COUNT_DIR,
+  
   pattern = "\\.tabular$",
+  
   full.names = TRUE
+  
 )
 
-cat("---------------------------------------\n")
-cat("Galaxy featureCounts Merge Pipeline\n")
-cat("---------------------------------------\n")
+cat("Searching featureCounts files...\n")
 
-cat("Files detected:", length(count_files), "\n")
+cat("Files Detected :", length(count_files), "\n\n")
 
-if(length(count_files) == 0){
+if (length(count_files) == 0) {
   
-  stop("No .tabular files found in data/counts")
-  
-}
-
-##############################
-# Read First File
-##############################
-
-merged_counts <- read_tsv(
-  count_files[1],
-  show_col_types = FALSE
-)
-
-##############################
-# Validate First File
-##############################
-
-if(ncol(merged_counts) != 2){
-  
-  stop("First file does not contain exactly 2 columns.")
-  
-}
-
-if(colnames(merged_counts)[1] != "Geneid"){
-  
-  stop("First column must be named 'Geneid'.")
-  
-}
-
-##############################
-# Merge Remaining Files
-##############################
-
-for(i in 2:length(count_files)){
-  
-  temp <- read_tsv(
-    count_files[i],
-    show_col_types = FALSE
+  stop(
+    "No featureCounts (.tabular) files found in data/Counts."
   )
   
-  if(ncol(temp) != 2){
+}
+
+##############################################################
+# Read First Count File
+##############################################################
+
+merged_counts <- readr::read_tsv(
+  
+  count_files[1],
+  
+  show_col_types = FALSE
+  
+)
+
+##############################################################
+# Validate First File
+##############################################################
+
+if (ncol(merged_counts) != 2) {
+  
+  stop(
+    "First featureCounts file must contain exactly two columns."
+  )
+  
+}
+
+if (colnames(merged_counts)[1] != "Geneid") {
+  
+  stop(
+    "First column must be named 'Geneid'."
+  )
+  
+}
+
+##############################################################
+# Merge Remaining Files
+##############################################################
+
+if (length(count_files) > 1) {
+  
+  for (i in 2:length(count_files)) {
     
-    stop(
-      paste(
+    cat(
+      
+      "[",
+      
+      i,
+      
+      "/",
+      
+      length(count_files),
+      
+      "] ",
+      
+      basename(count_files[i]),
+      
+      "\n",
+      
+      sep = ""
+      
+    )
+    
+    temp <- readr::read_tsv(
+      
+      count_files[i],
+      
+      show_col_types = FALSE
+      
+    )
+    
+    if (ncol(temp) != 2) {
+      
+      stop(
+        
         basename(count_files[i]),
-        "does not contain exactly 2 columns."
+        
+        " does not contain exactly two columns."
+        
       )
+      
+    }
+    
+    merged_counts <- dplyr::full_join(
+      
+      merged_counts,
+      
+      temp,
+      
+      by = "Geneid"
+      
     )
     
   }
   
-  merged_counts <- full_join(
-    merged_counts,
-    temp,
-    by = "Geneid"
-  )
-  
 }
 
-##############################
-# Check Duplicate Genes
-##############################
+##############################################################
+# Quality Control
+##############################################################
 
-duplicates <- duplicated(merged_counts$Geneid)
+duplicate_genes <- duplicated(merged_counts$Geneid)
 
-cat("Duplicate Gene IDs:", sum(duplicates), "\n")
+missing_values <- sum(is.na(merged_counts))
 
-##############################
-# Missing Values
-##############################
+cat("\n")
+cat("Duplicate Gene IDs :", sum(duplicate_genes), "\n")
 
-na_values <- sum(is.na(merged_counts))
+cat("Missing Values     :", missing_values, "\n")
 
-cat("Missing Values:", na_values, "\n")
+##############################################################
+# Save Merged Count Matrix
+##############################################################
 
-##############################
-# Save Count Matrix
-##############################
-
-write_csv(
-  merged_counts,
-  file.path(output_dir,
-            "merged_counts.csv")
+output_file <- file.path(
+  
+  PROCESSED_DIR,
+  
+  "merged_counts.csv"
+  
 )
 
-##############################
-# Save Merge Log
-##############################
+readr::write_csv(
+  
+  merged_counts,
+  
+  output_file
+  
+)
+
+##############################################################
+# Save Log File
+##############################################################
 
 log_file <- file.path(
-  log_dir,
+  
+  LOG_DIR,
+  
   "merge_log.txt"
+  
 )
 
 sink(log_file)
 
 cat("AML Biomarker Discovery Pipeline\n\n")
 
-cat("Merge Date:\n")
+cat("Pipeline Version : ", PIPELINE_VERSION, "\n")
 
-print(Sys.time())
+cat("Date             : ", Sys.time(), "\n\n")
 
-cat("\n")
+cat("Files Merged     : ", length(count_files), "\n")
 
-cat("Files merged:\n")
+cat("Genes            : ", nrow(merged_counts), "\n")
 
-print(length(count_files))
+cat("Samples          : ", ncol(merged_counts) - 1, "\n")
 
-cat("\n")
+cat("Duplicate Genes  : ", sum(duplicate_genes), "\n")
 
-cat("Genes:\n")
-
-print(nrow(merged_counts))
-
-cat("\n")
-
-cat("Samples:\n")
-
-print(ncol(merged_counts)-1)
-
-cat("\n")
-
-cat("Duplicate Genes:\n")
-
-print(sum(duplicates))
-
-cat("\n")
-
-cat("Missing Values:\n")
-
-print(na_values)
+cat("Missing Values   : ", missing_values, "\n")
 
 sink()
 
-##############################
+##############################################################
 # Summary
-##############################
+##############################################################
+
+end_time <- Sys.time()
 
 cat("\n")
+cat("=========================================\n")
+cat("Stage 1 Completed Successfully\n")
+cat("=========================================\n\n")
 
-cat("---------------------------------------\n")
+cat("Genes             :", nrow(merged_counts), "\n")
 
-cat("Merge Completed Successfully\n")
+cat("Samples           :", ncol(merged_counts) - 1, "\n")
 
-cat("---------------------------------------\n")
+cat("Output            :", output_file, "\n")
 
-cat("Genes :", nrow(merged_counts), "\n")
+cat("Log               :", log_file, "\n")
 
-cat("Samples :", ncol(merged_counts)-1, "\n")
-
-cat("\n")
-
-cat("Merged count matrix saved to:\n")
-
-cat("data/processed/merged_counts.csv\n")
-
-cat("\n")
-
-cat("Log saved to:\n")
-
-cat("results/logs/merge_log.txt\n")
+cat("Time Elapsed      :", round(end_time - start_time, 2), "\n\n")

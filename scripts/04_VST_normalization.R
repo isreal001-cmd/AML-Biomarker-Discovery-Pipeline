@@ -1,112 +1,193 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Script: 04_VST_normalization.R
-###############################################################
+#
+# Script:
+# 04_VST_normalization.R
+#
+# Purpose:
+# Perform Variance Stabilizing Transformation (VST)
+# on the DESeq2 dataset for downstream visualization
+# and machine learning analyses.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-###############################################################
-# 1. Clear Environment
-###############################################################
+##############################################################
+# Load Global Configuration
+##############################################################
 
-# rm(list = ls())
+source("config.R")
 
-###############################################################
-# 2. Load Packages
-###############################################################
+cat("\n")
+cat("=========================================\n")
+cat("Stage 4 : Variance Stabilizing Transformation\n")
+cat("=========================================\n\n")
 
-packages <- c(
-  "DESeq2"
+start_time <- Sys.time()
+
+##############################################################
+# Define Directories
+##############################################################
+
+VST_DIR <- file.path(
+  RESULTS_DIR,
+  "vst"
 )
 
-for(pkg in packages){
-  
-  if(!require(pkg, character.only = TRUE)){
-    
-    if(pkg == "DESeq2"){
-      
-      if(!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
-      
-      BiocManager::install("DESeq2")
-      
-    }
-    
-    library(pkg, character.only = TRUE)
-    
-  }
-  
-}
-
-###############################################################
-# 3. Create Output Folder
-###############################################################
-
 dir.create(
-  "results/vst",
+  VST_DIR,
   recursive = TRUE,
   showWarnings = FALSE
 )
 
-###############################################################
-# 4. Load DESeq2 Object
-###############################################################
+##############################################################
+# Input File
+##############################################################
+
+DDS_FILE <- file.path(
+  RESULTS_DIR,
+  "deseq2",
+  "dds.rds"
+)
+
+##############################################################
+# Output Files
+##############################################################
+
+VSD_FILE <- file.path(
+  VST_DIR,
+  "vsd.rds"
+)
+
+VST_MATRIX_FILE <- file.path(
+  VST_DIR,
+  "vst_expression_matrix.csv"
+)
+
+##############################################################
+# Validate Input
+##############################################################
+
+if (!file.exists(DDS_FILE)) {
+  
+  stop(
+    "DESeq2 object not found.\nRun 03_DESeq2_analysis.R first."
+  )
+  
+}
+
+##############################################################
+# Load DESeq2 Object
+##############################################################
+
+cat("Loading DESeq2 object...\n")
 
 dds <- readRDS(
-  "results/deseq2/dds.rds"
+  DDS_FILE
 )
 
-cat("---------------------------------------\n")
-cat("DESeq2 Object Loaded Successfully\n")
-cat("---------------------------------------\n")
+cat("DESeq2 Object Successfully Loaded\n\n")
 
-###############################################################
-# 5. Variance Stabilizing Transformation
-###############################################################
+##############################################################
+# Perform Variance Stabilizing Transformation
+##############################################################
 
-cat("\nRunning VST...\n")
+cat("Running Variance Stabilizing Transformation...\n\n")
 
-vsd <- vst(
+vsd <- DESeq2::vst(
+  
   dds,
+  
   blind = FALSE
+  
 )
 
-cat("VST Completed.\n")
+cat("VST Completed Successfully\n")
 
-###############################################################
-# 6. Extract Matrix
-###############################################################
+##############################################################
+# Extract Expression Matrix
+##############################################################
 
-vst_matrix <- assay(vsd)
+vst_matrix <- SummarizedExperiment::assay(vsd)
 
-cat("\nDimensions:\n")
+cat("\n")
+cat("-----------------------------------------\n")
+cat("VST Matrix Summary\n")
+cat("-----------------------------------------\n")
 
-print(dim(vst_matrix))
+cat(
+  "Genes   :",
+  nrow(vst_matrix),
+  "\n"
+)
 
-###############################################################
-# 7. Save Outputs
-###############################################################
+cat(
+  "Samples :",
+  ncol(vst_matrix),
+  "\n\n"
+)
+
+##############################################################
+# Save Outputs
+##############################################################
 
 saveRDS(
+  
   vsd,
-  "results/vst/vsd.rds"
+  
+  VSD_FILE
+  
 )
 
-write.csv(
-  vst_matrix,
-  "results/vst/vst_expression_matrix.csv"
+readr::write_csv(
+  
+  as.data.frame(vst_matrix),
+  
+  VST_MATRIX_FILE
+  
 )
 
-###############################################################
-# 8. Summary
-###############################################################
+##############################################################
+# Summary
+##############################################################
 
-cat("\n---------------------------------------\n")
+end_time <- Sys.time()
 
-cat("VST Normalization Completed Successfully\n")
+cat("\n")
+cat("=========================================\n")
+cat("Stage 4 Completed Successfully\n")
+cat("=========================================\n\n")
 
-cat("---------------------------------------\n")
+cat(
+  "VST Object        :",
+  VSD_FILE,
+  "\n"
+)
 
-cat("\nFiles created:\n")
+cat(
+  "Expression Matrix :",
+  VST_MATRIX_FILE,
+  "\n\n"
+)
 
-cat("results/vst/vsd.rds\n")
+cat(
+  "Genes             :",
+  nrow(vst_matrix),
+  "\n"
+)
 
-cat("results/vst/vst_expression_matrix.csv\n")
+cat(
+  "Samples           :",
+  ncol(vst_matrix),
+  "\n\n"
+)
+
+cat(
+  "Time Elapsed      :",
+  round(end_time - start_time, 2),
+  "\n\n"
+)

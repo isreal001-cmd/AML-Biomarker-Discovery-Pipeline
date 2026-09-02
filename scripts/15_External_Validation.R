@@ -3,64 +3,65 @@
 # Script: 15_External_Validation.R
 #
 # Purpose:
-# External validation of candidate biomarkers using
-# TCGA, GEO, GTEx or user-supplied datasets.
+# Validate candidate AML biomarkers using independent
+# external datasets (TCGA, GEO, GTEx or User dataset)
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+###############################################################
+
+###############################################################
+# Initialise Environment
 ###############################################################
 
 # rm(list = ls())
 
-###############################################################
-# Load Configuration
-###############################################################
-
 source("config.R")
 source("functions/validation_functions.R")
 
+cat("=========================================\n")
+cat("Stage 15 : External Biomarker Validation\n")
+cat("=========================================\n\n")
+
 ###############################################################
-# Required Packages
+# Load Required Packages
 ###############################################################
 
-packages <- c(
+required_packages <- c(
+  
   "readr",
+  
   "dplyr"
+  
 )
 
-for(pkg in packages){
-  
-  if(!require(pkg, character.only = TRUE)){
-    
-    install.packages(pkg)
-    
-    library(pkg, character.only = TRUE)
-    
-  }
-  
-}
+install_and_load_packages(required_packages)
 
 ###############################################################
-# Choose Dataset
+# Select Validation Dataset
 ###############################################################
 
 validation_dataset <- "TCGA"
 
 ###############################################################
-# Load Dataset
+# Load Validation Dataset
 ###############################################################
 
-cat("---------------------------------------\n")
-cat("Loading Validation Dataset\n")
-cat("---------------------------------------\n\n")
+cat("Loading validation dataset...\n")
 
 dataset <- load_validation_dataset(
   validation_dataset
 )
 
-expr <- dataset$expression
+expression <- dataset$expression
+
 metadata <- dataset$metadata
 
 ###############################################################
 # Load Biomarkers
 ###############################################################
+
+cat("Loading biomarker candidates...\n")
 
 biomarkers <- load_biomarkers()
 
@@ -69,13 +70,18 @@ biomarkers <- load_biomarkers()
 ###############################################################
 
 matched <- match_biomarkers(
-  expr,
+  
+  expression,
+  
   biomarkers
+  
 )
 
 ###############################################################
-# Detection Rate
+# Calculate Detection Rate
 ###############################################################
+
+cat("Calculating detection rate...\n")
 
 detection <- calculate_detection_rate(
   matched
@@ -84,6 +90,8 @@ detection <- calculate_detection_rate(
 ###############################################################
 # Expression Statistics
 ###############################################################
+
+cat("Calculating expression statistics...\n")
 
 statistics <- calculate_expression_statistics(
   matched
@@ -98,71 +106,113 @@ dataset_type <- detect_dataset_type(
 )
 
 ###############################################################
-# Output Folder
+# Validation Summary
 ###############################################################
 
+summary_table <- validation_summary(
+  
+  expression,
+  
+  metadata,
+  
+  matched
+  
+)
+
+summary_table$Dataset <- validation_dataset
+
+###############################################################
+# Create Output Directory
+###############################################################
+
+output_dir <- file.path(
+  
+  RESULTS_DIR,
+  
+  "validation"
+  
+)
+
 dir.create(
-  "results/validation",
+  
+  output_dir,
+  
   recursive = TRUE,
+  
   showWarnings = FALSE
+  
 )
 
 ###############################################################
 # Save Tables
 ###############################################################
 
-write_csv(
+write.csv(
   
   matched,
   
-  "results/validation/Matched_Biomarkers.csv"
+  file.path(
+    
+    output_dir,
+    
+    "Matched_Biomarkers.csv"
+    
+  ),
+  
+  row.names = FALSE
   
 )
 
-write_csv(
+write.csv(
   
   detection,
   
-  "results/validation/Biomarker_Detection.csv"
+  file.path(
+    
+    output_dir,
+    
+    "Biomarker_Detection.csv"
+    
+  ),
+  
+  row.names = FALSE
   
 )
 
-write_csv(
+write.csv(
   
   statistics,
   
-  "results/validation/Expression_Statistics.csv"
+  file.path(
+    
+    output_dir,
+    
+    "Expression_Statistics.csv"
+    
+  ),
+  
+  row.names = FALSE
   
 )
 
-###############################################################
-# Validation Summary
-###############################################################
-
-summary_table <- data.frame(
-  
-  Dataset = validation_dataset,
-  
-  TotalGenes = nrow(expr),
-  
-  BiomarkersMatched = nrow(matched),
-  
-  Samples = ncol(expr)-1,
-  
-  DatasetType = dataset_type
-  
-)
-
-write_csv(
+write.csv(
   
   summary_table,
   
-  "results/validation/Validation_Summary.csv"
+  file.path(
+    
+    output_dir,
+    
+    "Validation_Summary.csv"
+    
+  ),
+  
+  row.names = FALSE
   
 )
 
 ###############################################################
-# Validation Report
+# Generate Validation Report
 ###############################################################
 
 report <- c(
@@ -171,31 +221,115 @@ report <- c(
   
   "",
   
-  paste("Date:", Sys.time()),
+  paste("Pipeline Version :", PIPELINE_VERSION),
+  
+  paste("Author :", AUTHOR),
+  
+  paste("Date :", Sys.time()),
   
   "",
   
-  paste("Validation Dataset:", validation_dataset),
-  
-  paste("Dataset Type:", dataset_type),
+  "External Validation Summary",
   
   "",
   
-  paste("Genes:", nrow(expr)),
+  paste("Validation Dataset :", validation_dataset),
   
-  paste("Samples:", ncol(expr)-1),
-  
-  paste("Matched Biomarkers:", nrow(matched)),
+  paste("Dataset Type :", dataset_type),
   
   "",
   
-  if(dataset_type=="single_group"){
+  paste("Total Genes :", nrow(expression)),
+  
+  paste("Total Samples :", ncol(expression) - 1),
+  
+  paste("Candidate Biomarkers :", nrow(biomarkers)),
+  
+  paste("Matched Biomarkers :", nrow(matched)),
+  
+  "",
+  
+  "Detection Summary",
+  
+  "",
+  
+  paste(
     
-    "Only one biological group detected."
+    "Average Detection Rate :",
+    
+    round(
+      
+      mean(detection$DetectionRate),
+      
+      3
+      
+    )
+    
+  ),
+  
+  paste(
+    
+    "Minimum Detection Rate :",
+    
+    round(
+      
+      min(detection$DetectionRate),
+      
+      3
+      
+    )
+    
+  ),
+  
+  paste(
+    
+    "Maximum Detection Rate :",
+    
+    round(
+      
+      max(detection$DetectionRate),
+      
+      3
+      
+    )
+    
+  ),
+  
+  "",
+  
+  if(dataset_type == "single_group"){
+    
+    c(
+      
+      "Interpretation",
+      
+      "",
+      
+      "Only one biological group is available.",
+      
+      "Differential validation cannot be performed.",
+      
+      "Only biomarker presence and expression",
+      
+      "statistics are reported."
+      
+    )
     
   }else{
     
-    "Two biological groups detected."
+    c(
+      
+      "Interpretation",
+      
+      "",
+      
+      "Multiple biological groups detected.",
+      
+      "Dataset is suitable for comparative",
+      
+      "validation analysis."
+      
+    )
     
   },
   
@@ -209,32 +343,48 @@ writeLines(
   
   report,
   
-  "results/validation/Validation_Report.txt"
+  file.path(
+    
+    output_dir,
+    
+    "Validation_Report.txt"
+    
+  )
   
 )
 
 ###############################################################
-# Console Output
+# Console Summary
 ###############################################################
 
-cat("---------------------------------------\n")
-cat("External Validation Completed\n")
-cat("---------------------------------------\n\n")
+cat("\n")
+cat("=========================================\n")
+cat("External Validation Completed Successfully\n")
+cat("=========================================\n\n")
 
-cat("Dataset :", validation_dataset,"\n")
-cat("Samples :", ncol(expr)-1,"\n")
-cat("Genes :", nrow(expr),"\n")
-cat("Matched Biomarkers :", nrow(matched),"\n")
-cat("Dataset Type :", dataset_type,"\n\n")
+cat("Validation Dataset :", validation_dataset, "\n")
+cat("Dataset Type       :", dataset_type, "\n")
+cat("Genes             :", nrow(expression), "\n")
+cat("Samples           :", ncol(expression) - 1, "\n")
+cat("Matched Biomarkers:", nrow(matched), "\n\n")
 
-cat("Files created:\n")
+cat("Output Files\n\n")
 
-cat("results/validation/Matched_Biomarkers.csv\n")
+cat("Matched_Biomarkers.csv\n")
+cat("Biomarker_Detection.csv\n")
+cat("Expression_Statistics.csv\n")
+cat("Validation_Summary.csv\n")
+cat("Validation_Report.txt\n")
 
-cat("results/validation/Biomarker_Detection.csv\n")
+list.files(
+  "data",
+  recursive = TRUE,
+  full.names = TRUE
+)
 
-cat("results/validation/Expression_Statistics.csv\n")
+list.files(
+  "results/validation",
+  recursive = TRUE,
+  full.names = TRUE
+)
 
-cat("results/validation/Validation_Summary.csv\n")
-
-cat("results/validation/Validation_Report.txt\n")

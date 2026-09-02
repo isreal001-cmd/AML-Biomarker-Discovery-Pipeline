@@ -1,6 +1,6 @@
 ##############################################################
 # AML Biomarker Discovery Pipeline
-# Automatic Pipeline Report
+# Script: 19_Pipeline_Report.R
 #
 # Author  : Isreal Oluwafemi Abiodun
 # Version : 1.0.0
@@ -16,7 +16,10 @@ cat("---------------------------------------\n")
 # Report Directory
 ##############################################################
 
-REPORT_DIR <- file.path(RESULTS_DIR, "report")
+REPORT_DIR <- file.path(
+  RESULTS_DIR,
+  "report"
+)
 
 dir.create(
   REPORT_DIR,
@@ -25,56 +28,86 @@ dir.create(
 )
 
 ##############################################################
-# Count Generated Figures
+# Count Outputs
 ##############################################################
 
 n_figures <- length(
-  
   list.files(
     FIGURE_DIR,
-    recursive = TRUE
+    recursive = TRUE,
+    full.names = TRUE
   )
-  
 )
-
-##############################################################
-# Count Generated Tables
-##############################################################
 
 n_tables <- length(
-  
   list.files(
     TABLE_DIR,
-    recursive = TRUE
+    recursive = TRUE,
+    full.names = TRUE
   )
-  
 )
 
-##############################################################
-# Count Result Files
-##############################################################
-
-n_results <- length(
-  
+n_result_files <- length(
   list.files(
     RESULTS_DIR,
-    recursive = TRUE
+    recursive = TRUE,
+    full.names = TRUE
   )
-  
+)
+
+n_validation_files <- length(
+  list.files(
+    VALIDATION_DIR,
+    recursive = TRUE,
+    full.names = TRUE
+  )
 )
 
 ##############################################################
-# Count Validation Files
+# Pipeline Stages
 ##############################################################
 
-validation_dir <- file.path(DATA_DIR, "validation")
-
-n_validation <- length(
+pipeline_modules <- c(
   
-  list.files(
-    validation_dir,
-    recursive = TRUE
-  )
+  "01. Merge FeatureCounts",
+  
+  "02. Prepare Metadata",
+  
+  "03. Differential Expression Analysis",
+  
+  "04. Variance Stabilizing Transformation",
+  
+  "05. PCA Analysis",
+  
+  "06. Volcano Plot",
+  
+  "07. Heatmap",
+  
+  "08. Batch Assessment",
+  
+  "09. Biomarker Candidate Selection",
+  
+  "10. Functional Enrichment",
+  
+  "11. ROC Analysis",
+  
+  "12. Biomarker Expression Plots",
+  
+  "13. Random Forest Validation",
+  
+  "14A. Validation Dataset Assessment",
+  
+  "14B. TCGA Dataset Preparation",
+  
+  "15. External Validation",
+  
+  "16. Validation Visualisation",
+  
+  "17. Session Information",
+  
+  "18. Publication Summary",
+  
+  "19. Pipeline Report"
   
 )
 
@@ -84,9 +117,11 @@ n_validation <- length(
 
 report <- c(
   
-  "=================================================",
+  "==============================================================",
+  
   "AML Biomarker Discovery Pipeline",
-  "=================================================",
+  
+  "==============================================================",
   
   "",
   
@@ -98,74 +133,69 @@ report <- c(
   
   paste("Date     :", Sys.Date()),
   
-  "",
+  paste("R        :", R.version.string),
   
+  "",
   
   "PROJECT SUMMARY",
   
   "----------------",
   
-  paste("Figures Generated        :", n_figures),
+  paste("Pipeline Modules      :", length(pipeline_modules)),
   
-  paste("Tables Generated         :", n_tables),
+  paste("Figures Generated     :", n_figures),
   
-  paste("Result Files             :", n_results),
+  paste("Tables Generated      :", n_tables),
   
-  paste("Validation Files         :", n_validation),
+  paste("Result Files          :", n_result_files),
+  
+  paste("Validation Files      :", n_validation_files),
   
   "",
   
-  
-  "MODULES COMPLETED",
+  "PIPELINE MODULES",
   
   "----------------",
   
-  "[✓] FeatureCounts Merge",
-  
-  "[✓] Metadata Preparation",
-  
-  "[✓] Differential Expression",
-  
-  "[✓] VST Normalization",
-  
-  "[✓] PCA",
-  
-  "[✓] Volcano Plot",
-  
-  "[✓] Heatmap",
-  
-  "[✓] Batch Assessment",
-  
-  "[✓] Biomarker Ranking",
-  
-  "[✓] Functional Enrichment",
-  
-  "[✓] ROC Analysis",
-  
-  "[✓] Expression Plots",
-  
-  "[✓] Random Forest",
-  
-  "[✓] Validation Preparation",
-  
-  "[✓] TCGA Validation",
-  
-  "[✓] External Validation",
-  
-  "[✓] Validation Visualization",
-  
-  "[✓] Session Logging",
-  
-  "[✓] Publication Summary",
+  paste("[✓]", pipeline_modules),
   
   "",
-  
   
   "STATUS",
   
   "------",
   
-  "Pipeline Completed Successfully."
+  "Pipeline completed successfully.",
+  
+  "",
+  
+  "Output folders include:",
+  
+  "results/",
+  
+  "results/deseq2",
+  
+  "results/vst",
+  
+  "results/pca",
+  
+  "results/heatmap",
+  
+  "results/roc",
+  
+  "results/biomarkers",
+  
+  "results/random_forest",
+  
+  "results/enrichment",
+  
+  "results/validation",
+  
+  "results/publication",
+  
+  "results/logs",
+  
+  "results/report"
   
 )
 
@@ -184,4 +214,18 @@ writeLines(
   
 )
 
-cat("Pipeline report generated.\n")
+##############################################################
+# Console Output
+##############################################################
+
+cat("---------------------------------------\n")
+cat("Pipeline Report Generated Successfully\n")
+cat("---------------------------------------\n\n")
+
+cat("Modules completed :", length(pipeline_modules), "\n")
+cat("Figures generated :", n_figures, "\n")
+cat("Tables generated  :", n_tables, "\n")
+cat("Result files      :", n_result_files, "\n\n")
+
+cat("File created:\n")
+cat("results/report/Pipeline_Report.txt\n")

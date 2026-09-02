@@ -1,147 +1,196 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Script: 14A_Prepare_Validation_Data.R
+#
+# Script:
+# 14A_Prepare_Validation_Data.R
+#
 # Purpose:
 # Verify that external validation datasets are available
-# and correctly organized before downstream validation.
-###############################################################
+# and correctly organised before downstream validation.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-# rm(list = ls())
-
-###############################################################
+##############################################################
 # Load Configuration
-###############################################################
+##############################################################
 
 source("config.R")
 
-###############################################################
-# Create Validation Directories
-###############################################################
+cat("\n")
+cat("=========================================\n")
+cat("Stage 14A : Validation Dataset Assessment\n")
+cat("=========================================\n\n")
+
+start_time <- Sys.time()
+
+##############################################################
+# Validation Directories
+##############################################################
+
+VALIDATION_DIR <- file.path(
+  "data",
+  "validation"
+)
+
+VALIDATION_RESULTS_DIR <- file.path(
+  RESULTS_DIR,
+  "validation"
+)
+
+dir.create(
+  VALIDATION_RESULTS_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 validation_dirs <- c(
   
-  "data/validation",
+  file.path(VALIDATION_DIR),
   
-  "data/validation/TCGA",
+  file.path(VALIDATION_DIR, "TCGA"),
   
-  "data/validation/GEO",
+  file.path(VALIDATION_DIR, "GEO"),
   
-  "data/validation/GTEx",
+  file.path(VALIDATION_DIR, "GTEx"),
   
-  "data/validation/User"
+  file.path(VALIDATION_DIR, "User")
   
 )
 
-for(dir in validation_dirs){
+for (directory in validation_dirs) {
   
   dir.create(
-    dir,
+    directory,
     recursive = TRUE,
     showWarnings = FALSE
   )
   
 }
 
-###############################################################
-# Expected Files
-###############################################################
+##############################################################
+# Expected Validation Files
+##############################################################
 
 expected <- data.frame(
   
   Dataset = c(
+    
     "TCGA",
+    
     "GEO",
+    
     "GTEx",
+    
     "User"
+    
   ),
   
   Expression = c(
-    "data/validation/TCGA/expression.csv",
-    "data/validation/GEO/expression.csv",
-    "data/validation/GTEx/expression.csv",
-    "data/validation/User/expression.csv"
+    
+    file.path(VALIDATION_DIR, "TCGA", "expression.csv"),
+    
+    file.path(VALIDATION_DIR, "GEO", "expression.csv"),
+    
+    file.path(VALIDATION_DIR, "GTEx", "expression.csv"),
+    
+    file.path(VALIDATION_DIR, "User", "expression.csv")
+    
   ),
   
   Metadata = c(
-    "data/validation/TCGA/metadata.csv",
-    "data/validation/GEO/metadata.csv",
-    "data/validation/GTEx/metadata.csv",
-    "data/validation/User/metadata.csv"
+    
+    file.path(VALIDATION_DIR, "TCGA", "metadata.csv"),
+    
+    file.path(VALIDATION_DIR, "GEO", "metadata.csv"),
+    
+    file.path(VALIDATION_DIR, "GTEx", "metadata.csv"),
+    
+    file.path(VALIDATION_DIR, "User", "metadata.csv")
+    
   ),
   
   stringsAsFactors = FALSE
   
 )
 
-###############################################################
-# Check Availability
-###############################################################
+##############################################################
+# Assess Dataset Availability
+##############################################################
 
-status <- data.frame()
-
-for(i in seq_len(nrow(expected))){
+status <- data.frame(
   
-  expr_exists <- file.exists(expected$Expression[i])
+  Dataset = expected$Dataset,
   
-  meta_exists <- file.exists(expected$Metadata[i])
+  Expression = file.exists(expected$Expression),
   
-  status <- rbind(
-    
-    status,
-    
-    data.frame(
-      
-      Dataset = expected$Dataset[i],
-      
-      Expression = expr_exists,
-      
-      Metadata = meta_exists,
-      
-      Ready = expr_exists & meta_exists
-      
-    )
-    
-  )
+  Metadata = file.exists(expected$Metadata)
   
-}
-
-###############################################################
-# Save Report
-###############################################################
-
-dir.create(
-  "results/validation",
-  recursive = TRUE,
-  showWarnings = FALSE
 )
 
-write.csv(
+status$Ready <- status$Expression & status$Metadata
+
+##############################################################
+# Save Status Report
+##############################################################
+
+STATUS_FILE <- file.path(
+  
+  VALIDATION_RESULTS_DIR,
+  
+  "Validation_Dataset_Status.csv"
+  
+)
+
+readr::write_csv(
   
   status,
   
-  "results/validation/Validation_Dataset_Status.csv",
-  
-  row.names = FALSE
+  STATUS_FILE
   
 )
 
-###############################################################
-# Console Output
-###############################################################
+##############################################################
+# Console Summary
+##############################################################
 
-cat("---------------------------------------\n")
-cat("Validation Dataset Assessment\n")
-cat("---------------------------------------\n\n")
+cat("Validation Dataset Status\n")
+cat("-----------------------------------------\n\n")
 
 print(status)
 
-cat("\n---------------------------------------\n")
+cat("\n")
 
-ready <- sum(status$Ready)
+cat(
+  "Datasets Ready :",
+  sum(status$Ready),
+  "of",
+  nrow(status),
+  "\n\n"
+)
 
-cat("Datasets Ready:", ready, "of", nrow(status), "\n")
+cat(
+  "Status Report :",
+  STATUS_FILE,
+  "\n\n"
+)
 
-cat("---------------------------------------\n")
+##############################################################
+# Completion
+##############################################################
 
-cat("\nFile created:\n")
-cat("results/validation/Validation_Dataset_Status.csv\n")
+end_time <- Sys.time()
+
+cat("=========================================\n")
+cat("Stage 14A Completed Successfully\n")
+cat("=========================================\n\n")
+
+cat(
+  "Time Elapsed :",
+  round(end_time - start_time, 2),
+  "\n\n"
+)

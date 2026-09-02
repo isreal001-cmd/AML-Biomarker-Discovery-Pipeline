@@ -1,167 +1,277 @@
-###############################################################
+##############################################################
 # AML Biomarker Discovery Pipeline
-# Script: 08_Batch_Assessment.R
+#
+# Script:
+# 08_Batch_Assessment.R
+#
 # Purpose:
-# Assess sequencing platform confounding and document why
-# ComBat batch correction cannot be applied.
-###############################################################
+# Assess sequencing platform confounding and document
+# why ComBat batch correction cannot be applied.
+#
+# Author:
+# Isreal Oluwafemi Abiodun
+#
+# Version:
+# 1.0.0
+##############################################################
 
-#==============================================================
-# 1. INITIALISE ENVIRONMENT
-#==============================================================
-
-# rm(list = ls())
+##############################################################
+# Load Configuration
+##############################################################
 
 source("config.R")
 source("functions/plotting_functions.R")
 
-packages <- c(
-  "readr",
-  "dplyr",
-  "ggplot2"
-)
-
-for(pkg in packages){
-  
-  if(!require(pkg, character.only = TRUE)){
-    
-    install.packages(pkg)
-    
-    library(pkg, character.only = TRUE)
-    
-  }
-  
-}
-
-#==============================================================
-# 2. LOAD DATA
-#==============================================================
-
-metadata <- read_csv(
-  "data/metadata/sample_metadata.csv",
-  show_col_types = FALSE
-)
-
-cat("---------------------------------------\n")
-cat("Metadata Loaded Successfully\n")
-cat("---------------------------------------\n\n")
-
-cat("Samples:", nrow(metadata), "\n\n")
-
-#==============================================================
-# 3. SUMMARISE SAMPLE DISTRIBUTION
-#==============================================================
-
-distribution <- table(
-  metadata$Condition,
-  metadata$Platform
-)
-
-print(distribution)
-
-#==============================================================
-# 4. CHECK FOR COMPLETE CONFOUNDING
-#==============================================================
-
-confounded <- all(rowSums(distribution > 0) == 1) &
-  all(colSums(distribution > 0) == 1)
-
 cat("\n")
+cat("=========================================\n")
+cat("Stage 8 : Batch Assessment\n")
+cat("=========================================\n\n")
 
-if(confounded){
-  
-  cat("Complete confounding detected.\n")
-  
-}else{
-  
-  cat("No complete confounding detected.\n")
-  
-}
+start_time <- Sys.time()
 
-#==============================================================
-# 5. CREATE OUTPUT DIRECTORY
-#==============================================================
+##############################################################
+# Directories
+##############################################################
+
+BATCH_DIR <- file.path(
+  RESULTS_DIR,
+  "batch_assessment"
+)
 
 dir.create(
-  "results/batch_assessment",
+  BATCH_DIR,
   recursive = TRUE,
   showWarnings = FALSE
 )
 
-#==============================================================
-# 6. SAVE CONTINGENCY TABLE
-#==============================================================
+##############################################################
+# Input File
+##############################################################
 
-write.csv(
-  as.data.frame.matrix(distribution),
-  "results/batch_assessment/Condition_Platform_Table.csv"
+METADATA_FILE <- file.path(
+  "data",
+  "metadata",
+  "sample_metadata.csv"
 )
 
-#==============================================================
-# 7. CREATE BARPLOT
-#==============================================================
+##############################################################
+# Output Files
+##############################################################
 
-plot_data <- metadata %>%
-  dplyr::count(Condition, Platform)
+TABLE_FILE <- file.path(
+  BATCH_DIR,
+  "Condition_Platform_Table.csv"
+)
 
-p <- ggplot(
-  plot_data,
-  aes(
-    x = Condition,
-    y = n,
-    fill = Platform
+PNG_FILE <- file.path(
+  BATCH_DIR,
+  "Condition_vs_Platform.png"
+)
+
+PDF_FILE <- file.path(
+  BATCH_DIR,
+  "Condition_vs_Platform.pdf"
+)
+
+REPORT_FILE <- file.path(
+  BATCH_DIR,
+  "Batch_Assessment_Report.txt"
+)
+
+##############################################################
+# Validate Input
+##############################################################
+
+if (!file.exists(METADATA_FILE)) {
+  
+  stop(
+    "Sample metadata not found.\nRun 02_prepare_metadata.R first."
   )
+  
+}
+
+##############################################################
+# Load Metadata
+##############################################################
+
+cat("Loading metadata...\n")
+
+metadata <- readr::read_csv(
+  METADATA_FILE,
+  show_col_types = FALSE
+)
+
+cat(
+  "Samples Loaded :",
+  nrow(metadata),
+  "\n\n"
+)
+
+##############################################################
+# Contingency Table
+##############################################################
+
+distribution <- table(
+  
+  metadata$Condition,
+  
+  metadata$Platform
+  
+)
+
+cat("-----------------------------------------\n")
+cat("Condition × Platform\n")
+cat("-----------------------------------------\n\n")
+
+print(distribution)
+
+##############################################################
+# Confounding Assessment
+##############################################################
+
+confounded <-
+  
+  all(rowSums(distribution > 0) == 1) &
+  
+  all(colSums(distribution > 0) == 1)
+
+cat("\n")
+
+if (confounded) {
+  
+  cat("Complete confounding detected.\n\n")
+  
+} else {
+  
+  cat("No complete confounding detected.\n\n")
+  
+}
+
+##############################################################
+# Save Contingency Table
+##############################################################
+
+readr::write_csv(
+  
+  as.data.frame.matrix(distribution),
+  
+  TABLE_FILE
+  
+)
+
+##############################################################
+# Plot Sample Distribution
+##############################################################
+
+plot_data <-
+  
+  dplyr::count(
+    
+    metadata,
+    
+    Condition,
+    
+    Platform
+    
+  )
+
+p <- ggplot2::ggplot(
+  
+  plot_data,
+  
+  ggplot2::aes(
+    
+    x = Condition,
+    
+    y = n,
+    
+    fill = Platform
+    
+  )
+  
 ) +
   
-  geom_col(
-    width = 0.7
+  ggplot2::geom_col(
+    
+    width = 0.70
+    
   ) +
   
-  geom_text(
-    aes(label = n),
+  ggplot2::geom_text(
+    
+    ggplot2::aes(label = n),
+    
     vjust = -0.4,
+    
     size = 5
+    
   ) +
   
-  scale_fill_manual(
+  ggplot2::scale_fill_manual(
+    
     values = c(
-      HiSeq1000 = "#4F81BD",
-      NextSeq550 = "#C0504D"
+      
+      HiSeq1000 = HEALTHY_BLUE,
+      
+      NextSeq550 = AML_RED
+      
     )
+    
   ) +
   
-  labs(
-    title = "Distribution of Samples by Condition and Sequencing Platform",
+  ggplot2::labs(
+    
+    title = "Distribution of Samples by Sequencing Platform",
+    
+    subtitle = "Assessment of Platform Confounding",
+    
     x = "Condition",
+    
     y = "Number of Samples"
+    
   ) +
   
   publication_theme()
 
-ggsave(
-  filename = "results/batch_assessment/Condition_vs_Platform.png",
-  plot = p,
+##############################################################
+# Export Figures
+##############################################################
+
+ggplot2::ggsave(
+  
+  PNG_FILE,
+  
+  p,
+  
   width = FIG_WIDTH,
+  
   height = FIG_HEIGHT,
+  
   dpi = FIG_DPI
+  
 )
 
-ggsave(
-  filename = "results/batch_assessment/Condition_vs_Platform.pdf",
-  plot = p,
+ggplot2::ggsave(
+  
+  PDF_FILE,
+  
+  p,
+  
   width = FIG_WIDTH,
+  
   height = FIG_HEIGHT
+  
 )
 
-#==============================================================
-# 8. WRITE REPORT
-#==============================================================
+##############################################################
+# Report
+##############################################################
 
 report <- c(
   
   "AML Biomarker Discovery Pipeline",
   
-  "", 
+  "",
   
   paste("Date:", Sys.time()),
   
@@ -171,61 +281,113 @@ report <- c(
   
   "",
   
-  paste("Total samples:", nrow(metadata)),
+  paste("Total Samples :", nrow(metadata)),
   
-  paste("AML samples:", sum(metadata$Condition == "AML")),
+  paste("AML Samples :", sum(metadata$Condition == "AML")),
   
-  paste("Healthy samples:", sum(metadata$Condition == "Healthy")),
+  paste("Healthy Samples :", sum(metadata$Condition == "Healthy")),
   
   "",
   
-  "Condition vs Platform:",
+  "Condition versus Platform",
   
   capture.output(distribution),
   
   "",
   
-  if(confounded){
+  if (confounded)
     
     c(
-      "Result: COMPLETE CONFOUNDING DETECTED.",
+      
+      "RESULT: COMPLETE CONFOUNDING DETECTED.",
+      
       "",
-      "Interpretation:",
-      "Sequencing platform is perfectly associated with biological condition.",
-      "AML samples originate exclusively from NextSeq550.",
-      "Healthy samples originate exclusively from HiSeq1000.",
+      
+      "Sequencing platform is perfectly associated",
+      
+      "with biological condition.",
+      
       "",
-      "ComBat empirical Bayes correction cannot separate technical effects from biological effects.",
+      
+      "AML samples were generated on NextSeq550.",
+      
+      "Healthy samples were generated on HiSeq1000.",
+      
       "",
-      "Therefore ComBat was intentionally NOT applied.",
+      
+      "ComBat empirical Bayes correction cannot",
+      
+      "distinguish technical effects from",
+      
+      "true biological effects.",
+      
       "",
-      "Independent external validation will instead be used to demonstrate robustness of identified biomarkers."
+      
+      "Batch correction was intentionally omitted.",
+      
+      "",
+      
+      "External validation will be used instead."
+      
     )
+  
+  else
     
-  } else {
-    
-    "Result: No complete confounding detected."
-    
-  }
+    "RESULT: No complete confounding detected."
   
 )
 
 writeLines(
+  
   report,
-  "results/batch_assessment/Batch_Assessment_Report.txt"
+  
+  REPORT_FILE
+  
 )
 
-#==============================================================
-# 9. SUMMARY
-#==============================================================
+##############################################################
+# Summary
+##############################################################
 
-cat("\n---------------------------------------\n")
-cat("Batch Assessment Completed Successfully\n")
-cat("---------------------------------------\n\n")
+end_time <- Sys.time()
 
-cat("Files created:\n")
+cat("\n")
+cat("=========================================\n")
+cat("Stage 8 Completed Successfully\n")
+cat("=========================================\n\n")
 
-cat("results/batch_assessment/Condition_vs_Platform.png\n")
-cat("results/batch_assessment/Condition_vs_Platform.pdf\n")
-cat("results/batch_assessment/Condition_Platform_Table.csv\n")
-cat("results/batch_assessment/Batch_Assessment_Report.txt\n")
+cat(
+  "Contingency Table :",
+  TABLE_FILE,
+  "\n"
+)
+
+cat(
+  "PNG Figure        :",
+  PNG_FILE,
+  "\n"
+)
+
+cat(
+  "PDF Figure        :",
+  PDF_FILE,
+  "\n"
+)
+
+cat(
+  "Report            :",
+  REPORT_FILE,
+  "\n\n"
+)
+
+cat(
+  "Complete Confounding :",
+  ifelse(confounded, "YES", "NO"),
+  "\n\n"
+)
+
+cat(
+  "Time Elapsed :",
+  round(end_time - start_time, 2),
+  "\n\n"
+)
